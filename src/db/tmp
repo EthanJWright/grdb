@@ -23,6 +23,7 @@ set_file_desc(component_t c, vertexid_t v1){
       printf("Open vertex file failed\n");
       return;
   }
+  printf("fd is: %i\n",c->vfd);
 }
 
 attribute_t 
@@ -35,70 +36,90 @@ find_int_attr(attribute_t a){
   return NULL;
 }
 
+int 
+num_vert(component_t c){
+  ssize_t size;
+  // check for schema
+  if(c->sv == NULL){
+    size = 0;
+  }else{
+    size = schema_size(c->sv);
+  }
+
+  // Read ids from vertex file
+  int unit_size = sizeof(vertexid_t) + size;
+  char *buffer = malloc(unit_size);
+  off_t offset;
+  int file = c->vfd;
+  printf("Num vert fd is: %i\n",file);
+  int count = 0;
+
+  for(offset = 0;; offset += unit_size){
+    ssize_t amount_read = lseek(file, offset, unit_size);
+    if(amount_read <= 0){
+      break;
+    }else{
+      count += 1;
+    }
+  }
+  free(buffer);
+  return count;
+}
+
+
+
+
 /* get number of vertices in component c */
 int
 get_vertices_total(component_t c){
-    ssize_t extra, len;
-    char* buffer;
-    off_t offset;
+    ssize_t size, len;
+    char* buf;
+    off_t off;
     int readlen, count;
     
-    if (c->sv == NULL){
-      extra = 0;
-    }else{
-      extra = schema_size(c->sv);
-    }
+    if (c->sv == NULL)
+        size = 0;
+    else
+        size = schema_size(c->sv);
     
-    readlen = sizeof(vertexid_t) + extra;
-    buffer = malloc(readlen); 
+    readlen = sizeof(vertexid_t) + size;
+    printf("size is: %zu\n", size);
+    buf = malloc(readlen); 
     count = 0;
-
-    // See how many vertices are in the file
-    while(1){
-      lseek(c->vfd, offset, SEEK_SET);
-      len = read(c->vfd, buffer, readlen);
-      if(len == -1 || len == 0){
-        break;
-      }
-      offset += readlen;
-      count++;
+    for (off = 0;; off += readlen) {
+        lseek(c->vfd, off, SEEK_SET);
+        len = read(c->vfd, buf, readlen);
+        if (len <= 0)
+            break;
+        (count) ++;
     }
-
-    free(buffer);
+    free(buf);
     return count;
 }
 
 void
-load_vertices(component_t c, vertexid_t *vertices){
-    ssize_t extra, len;
-    int readlen;
-    char* buffer;
-    off_t offset;
-    vertexid_t v;
+get_vert(component_t c, vertexid_t *vertecies){
+  ssize_t size;
+  // check for schema
+  if(c->sv == NULL){
+    size = 0;
+  }else{
+    size = schema_size(c->sv);
+  }
 
-    if (c->sv == NULL){
-      extra = 0;
-    }else{
-      extra = schema_size(c->sv);
+  // Read ids from vertex file
+  int unit_size = sizeof(vertexid_t) + size;
+  char *buffer = malloc(unit_size);
+  off_t offset;
+  int file = c->vfd;
+
+  for(int i = 0, offset = 0;; i++, offset += unit_size){
+    lseek(file, offset, SEEK_SET);
+    ssize_t len = read(file, buffer, unit_size);
+    if(len == -1 || len == 0){
+       break;
     }
-    
-    readlen = sizeof(vertexid_t) + extra;
-    buffer= malloc(readlen);
-
-    int index = 0;
-    while(1){
-      lseek(c->vfd, offset, SEEK_SET);
-      len = read(c->vfd,buffer, readlen);
-      if (len <= 0){
-          break;
-      }  
-      v = *((vertexid_t *)buffer);
-      vertices[index] = v;
-
-      offset += readlen;
-      index++;
-    }
-    free(buffer);
+  }
 }
 
 int
@@ -119,10 +140,6 @@ component_sssp(
 
   vertexid_t *vertices;
   vertices = malloc(total * sizeof(vertexid_t));
-  load_vertices(c, vertices);
-  for(int i = 0; i < total; i++){
-    printf("vertex id is: %llu\n", vertices[i]);
-}
 
 
      /*

@@ -1,1 +1,3 @@
-src/cli/db < generateGraph
+make clean
+make
+src/cli/db < test_script

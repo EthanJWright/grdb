@@ -104,6 +104,7 @@ cli_graph_component_sssp(char *cmdline, int *pos)
 
 	/* XXX Need to do some error checking on v1 and v2 here */
 
+	printf("execute dijkstra on vertex ids %llu and %llu\n", v1, v2);
 #if _DEBUG
 	printf("cli_graph_component_sssp: ");
 	printf("execute dijkstra on vertex ids %llu and %llu\n", v1, v2);
