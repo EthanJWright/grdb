@@ -47,7 +47,6 @@ find_int_attr(attribute_t a){
   return NULL;
 }
 
-/* get number of vertices in component c */
 int
 get_vertices_total(component_t c){
     ssize_t extra, len;
@@ -151,21 +150,13 @@ num_neighbor(component_t c,
 
 /* This is an utter crap method of gettig the vertex ids connected to the
  * vertex. I am not a good C programmer. This is an exercise in inefficiency. */
-vertexid_t*
+void
 get_edges(component_t c, 
     vertexid_t v1, 
     vertexid_t *vertices, 
     int total, 
-    char *attr_name)
+    char *attr_name, vertexid_t *edges)
 {
-  int total_edges = 0;
-  for(int i = 0; i < total; i++){
-    int weight = get_weight(c, v1, vertices[i], attr_name);
-    if(weight != INT_MAX){
-      total_edges++;
-    }
-  }
-  vertexid_t *edges = malloc(total_edges * sizeof(vertexid_t));
   int added = 0;
   for(int i = 0; i < total; i++){
     int weight = get_weight(c, v1, vertices[i], attr_name);
@@ -174,7 +165,6 @@ get_edges(component_t c,
       added ++;
     }
   }
-  return edges;
 }
 
 
@@ -195,39 +185,23 @@ component_sssp(
   int total = get_vertices_total(c);
 
   vertexid_t *vertices;
-  vertexid_t *visited;
-  vertexid_t *unvisited;
   int *costs;
   vertices = malloc(total * sizeof(vertexid_t));
-  visited = malloc(total * sizeof(vertexid_t));
-  unvisited = malloc(total * sizeof(vertexid_t));
   costs = malloc(total * sizeof(int));
 
   load_vertices(c, vertices);
 
-  // set visited, unvisited, and costs
-  visited[0] = vertices[0];
-  for(int i = 1; i < total; i++){
-    unvisited[i-1] = vertices[i];
-  }
   for(int i = 0; i < total; i++){
     costs[i] = INT_MAX;
   }
-
-  attribute_t result = find_int_attr(c->se->attrlist);
-  char* attr_name = result->name;
-
-  vertexid_t first = vertices[0];
-  vertexid_t second = vertices[2];
-  int weight = get_weight(c, first, second, attr_name);
-
-
-
+ 
      /*
 	 * Figure out which attribute in the component edges schema you will
 	 * use for your weight function
 	 */
 
+  attribute_t result = find_int_attr(c->se->attrlist);
+  char* attr_name = result->name;
 
 
 	/*
@@ -240,16 +214,21 @@ component_sssp(
 
   if(start != vertices[0]){
     printf("Start must be first vertex\n");
-    return -1;
+    return (-1);
   }else if(start == end){
     printf("They are the same... efficient path I guess.\n");
-    return -1;
+    return (-1);
   }else{
-    // Set initial cost
+    /* Run Dijkstras */
     costs[start-1] = 0;
     for(int i = 0; i < total; i++){
       vertexid_t current = vertices[i];
-      vertexid_t *connected = get_edges(c, current, vertices, total, attr_name);
+      // Get the edges for the current vertex
+      int total_edges = num_neighbor(c, v1, vertices, total, attr_name);
+      vertexid_t *connected = malloc(total_edges * sizeof(vertexid_t));
+      get_edges(c, current, vertices, total, attr_name, connected);
+
+
       int total_neighbors = num_neighbor(c, current, vertices,total, attr_name);
       for(int j = 0; j < total_neighbors; j++){
         vertexid_t neighbor = connected[j];
@@ -258,13 +237,13 @@ component_sssp(
           costs[neighbor - 1] = costs[current - 1] + weight;
         }
       }
+      free(connected);
     }
+    free(vertices);
+    free(costs);
     printf("Cost between %i and %i is %i.\n", start, end, costs[end-1]);
     return(costs[end-1]);
   }
-
-
-	/* Change this as needed */
 	return (-1);
 }
 
