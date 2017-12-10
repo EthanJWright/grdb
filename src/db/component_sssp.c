@@ -178,6 +178,8 @@ component_sssp(
         vertexid_t **path)
 {
 
+
+
   /* Set Vertex File Desc */
   set_file_desc(c, v1);
 
@@ -185,15 +187,28 @@ component_sssp(
   int total = get_vertices_total(c);
 
   vertexid_t *vertices;
+  vertexid_t *temp_path;
+
   int *costs;
+
+  char strs[total][BUFSIZE];
+  char cur_path[BUFSIZE];
+  char prev[BUFSIZE];
+
   vertices = malloc(total * sizeof(vertexid_t));
+  temp_path = malloc(total * sizeof(vertexid_t));
   costs = malloc(total * sizeof(int));
 
   load_vertices(c, vertices);
 
   for(int i = 0; i < total; i++){
     costs[i] = INT_MAX;
+    temp_path[i] = v1;
+    strcpy(strs[i], "");
   }
+  memset(cur_path, 0, BUFSIZE);
+  sprintf(cur_path, "%llu", v1);
+  strcpy(strs[0], cur_path);
  
      /*
 	 * Figure out which attribute in the component edges schema you will
@@ -210,7 +225,8 @@ component_sssp(
 	 */
 
   vertexid_t start = v1;
-  vertexid_t end = v2;
+  vertexid_t end = v2; 
+
 
   if(start != vertices[0]){
     printf("Start must be first vertex\n");
@@ -235,6 +251,15 @@ component_sssp(
         int weight = get_weight(c, current, neighbor, attr_name);
         if(costs[current - 1] + weight < costs[neighbor - 1]){
           costs[neighbor - 1] = costs[current - 1] + weight;
+
+          // This is the madness for tracking path, basically every point will
+          // have the sssp stored at its index. Again trash C is trash C.
+          memset(cur_path, 0, BUFSIZE);
+          memset(prev, 0, BUFSIZE);
+          strcpy(prev,strs[current-1]);
+          sprintf(cur_path, "-%llu", neighbor);
+          strcat(prev,cur_path);
+          strcpy(strs[neighbor-1],prev);
         }
       }
       free(connected);
@@ -242,6 +267,8 @@ component_sssp(
     free(vertices);
     free(costs);
     printf("Cost between %i and %i is %i.\n", start, end, costs[end-1]);
+    printf("Path is: %s\n", strs[end-1]);
+    *total_weight = costs[end-1];
     return(costs[end-1]);
   }
 	return (-1);
