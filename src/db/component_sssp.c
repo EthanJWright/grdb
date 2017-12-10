@@ -27,7 +27,9 @@ set_file_desc(component_t c, vertexid_t v1){
   /* Open the edge file */
   memset(s, 0, BUFSIZE);
   sprintf(s, "%s/%d/%d/e", grdbdir, gno, cno);
+#if _DEBUG
   printf("cli_graph_tuple: open edge file %s\n", s);
+#endif
   c->efd = open(s, O_RDWR | O_CREAT, 0644);
   if (c->efd < 0) {
 	  printf("Find edge ids failed\n");
@@ -121,7 +123,6 @@ get_weight(component_t c, vertexid_t v1, vertexid_t v2, char* attr_name){
   new_edge = component_find_edge_by_ids(c, &e);
 
   if(new_edge == NULL){
-    printf("v1 is: %llu v2 is: %llu \n", v1, v2);
     return INT_MAX;
   }
 
@@ -165,11 +166,12 @@ get_edges(component_t c,
     }
   }
   vertexid_t *edges = malloc(total_edges * sizeof(vertexid_t));
+  int added = 0;
   for(int i = 0; i < total; i++){
     int weight = get_weight(c, v1, vertices[i], attr_name);
     if(weight != INT_MAX){
-      edges[i] = vertices[i];
-      printf("Adding vertex %lu as edge\n", vertices[i]);
+      edges[added] = vertices[i];
+      added ++;
     }
   }
   return edges;
@@ -191,7 +193,6 @@ component_sssp(
 
   /* Get total vertices */
   int total = get_vertices_total(c);
-  printf("TOTAL IS : %i\n",total);
 
   vertexid_t *vertices;
   vertexid_t *visited;
@@ -213,18 +214,12 @@ component_sssp(
     costs[i] = INT_MAX;
   }
 
-  for(int i = 0; i < total; i++){
-    printf("vertex id is: %llu\n", vertices[i]);
-  }
-
   attribute_t result = find_int_attr(c->se->attrlist);
   char* attr_name = result->name;
-  printf("%s\n",attr_name);
 
   vertexid_t first = vertices[0];
   vertexid_t second = vertices[2];
   int weight = get_weight(c, first, second, attr_name);
-  printf("Weight of first edge is: %i\n", weight);
 
 
 
@@ -252,18 +247,24 @@ component_sssp(
   }else{
     // Set initial cost
     costs[start-1] = 0;
-    vertexid_t *connected = get_edges(c, start, vertices, total, attr_name);
-    /*
-    // Code for running
-    for(int i = 1; i < total; i++){
-      int weight = get_weight(c, start, vertices[i], attr_name);
+    for(int i = 0; i < total; i++){
+      vertexid_t current = vertices[i];
+      vertexid_t *connected = get_edges(c, current, vertices, total, attr_name);
+      int total_neighbors = num_neighbor(c, current, vertices,total, attr_name);
+      for(int j = 0; j < total_neighbors; j++){
+        vertexid_t neighbor = connected[j];
+        int weight = get_weight(c, current, neighbor, attr_name);
+        if(costs[current - 1] + weight < costs[neighbor - 1]){
+          costs[neighbor - 1] = costs[current - 1] + weight;
+        }
+      }
     }
-    */
+    printf("Cost between %i and %i is %i.\n", start, end, costs[end-1]);
+    return(costs[end-1]);
   }
 
 
 	/* Change this as needed */
 	return (-1);
 }
-
 
