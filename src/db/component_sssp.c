@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <limits.h>
 
 
 void
@@ -110,7 +111,6 @@ load_vertices(component_t c, vertexid_t *vertices){
     free(buffer);
 }
 
-
 int
 get_weight(component_t c, vertexid_t v1, vertexid_t v2, char* attr_name){
   struct edge e;
@@ -122,13 +122,59 @@ get_weight(component_t c, vertexid_t v1, vertexid_t v2, char* attr_name){
 
   if(new_edge == NULL){
     printf("v1 is: %llu v2 is: %llu \n", v1, v2);
-    return 100;
+    return INT_MAX;
   }
 
  int offset = tuple_get_offset(new_edge->tuple, attr_name);
   int weight = tuple_get_int(new_edge->tuple->buf + offset);
   return weight;
 }
+
+int
+num_neighbor(component_t c, 
+    vertexid_t v1, 
+    vertexid_t *vertices, 
+    int total, 
+    char *attr_name){
+  int total_edges = 0;
+  for(int i = 0; i < total; i++){
+    int weight = get_weight(c, v1, vertices[i], attr_name);
+    if(weight != INT_MAX){
+      total_edges++;
+    }
+  }
+  return total_edges;
+}
+
+
+
+/* This is an utter crap method of gettig the vertex ids connected to the
+ * vertex. I am not a good C programmer. This is an exercise in inefficiency. */
+vertexid_t*
+get_edges(component_t c, 
+    vertexid_t v1, 
+    vertexid_t *vertices, 
+    int total, 
+    char *attr_name)
+{
+  int total_edges = 0;
+  for(int i = 0; i < total; i++){
+    int weight = get_weight(c, v1, vertices[i], attr_name);
+    if(weight != INT_MAX){
+      total_edges++;
+    }
+  }
+  vertexid_t *edges = malloc(total_edges * sizeof(vertexid_t));
+  for(int i = 0; i < total; i++){
+    int weight = get_weight(c, v1, vertices[i], attr_name);
+    if(weight != INT_MAX){
+      edges[i] = vertices[i];
+      printf("Adding vertex %lu as edge\n", vertices[i]);
+    }
+  }
+  return edges;
+}
+
 
 int
 component_sssp(
@@ -148,8 +194,24 @@ component_sssp(
   printf("TOTAL IS : %i\n",total);
 
   vertexid_t *vertices;
+  vertexid_t *visited;
+  vertexid_t *unvisited;
+  int *costs;
   vertices = malloc(total * sizeof(vertexid_t));
+  visited = malloc(total * sizeof(vertexid_t));
+  unvisited = malloc(total * sizeof(vertexid_t));
+  costs = malloc(total * sizeof(int));
+
   load_vertices(c, vertices);
+
+  // set visited, unvisited, and costs
+  visited[0] = vertices[0];
+  for(int i = 1; i < total; i++){
+    unvisited[i-1] = vertices[i];
+  }
+  for(int i = 0; i < total; i++){
+    costs[i] = INT_MAX;
+  }
 
   for(int i = 0; i < total; i++){
     printf("vertex id is: %llu\n", vertices[i]);
@@ -188,8 +250,15 @@ component_sssp(
     printf("They are the same... efficient path I guess.\n");
     return -1;
   }else{
+    // Set initial cost
+    costs[start-1] = 0;
+    vertexid_t *connected = get_edges(c, start, vertices, total, attr_name);
+    /*
     // Code for running
-
+    for(int i = 1; i < total; i++){
+      int weight = get_weight(c, start, vertices[i], attr_name);
+    }
+    */
   }
 
 
